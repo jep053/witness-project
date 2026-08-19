@@ -1,4 +1,4 @@
-import Image from "next/image";
+/* import Image from "next/image";
 
 export default function Home() {
   return (
@@ -66,4 +66,27 @@ export default function Home() {
       </main>
     </div>
   );
+}
+ */
+import { createClient } from '@/lib/supabase/server'
+
+export default async function Home() {
+  const supabase = await createClient()
+
+  // 1. Insert 테스트
+  const { data: insertData, error: insertError } = await supabase
+    .from('tags')
+    .insert({ name: 'test-tag' })
+    .select()
+
+  // 2. Select 테스트 (방금 넣은 것 포함해서 전체 조회)
+  const { data: selectData, error: selectError } = await supabase
+    .from('tags')
+    .select('*')
+
+  return (
+    <pre>
+      {JSON.stringify({ insertData, insertError, selectData, selectError }, null, 2)}
+    </pre>
+  )
 }
