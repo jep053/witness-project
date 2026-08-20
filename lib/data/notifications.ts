@@ -14,3 +14,12 @@ export async function getNotifications(userId: string): Promise<Notification[]> 
 export async function getFollowStatus(followId: string) {
   return mockFollows.find((f) => f.id === followId) ?? null
 }
+
+// Unread notification count for the sidebar badge.
+// Kept separate from getNotifications() so the sidebar doesn't have to
+// load the full list on every page render.
+export async function getUnreadCount(userId: string): Promise<number> {
+  return mockNotifications.filter(
+    (n) => n.recipient_id === userId && !n.is_read
+  ).length
+}
