@@ -1,7 +1,12 @@
-import { mockGoals } from '@/lib/mock-data/goals'
+import {
+  mockGoals,
+  addPlannedGoal,
+  addActiveGoal,
+  activateGoal,
+} from '@/lib/mock-data/goals'
 import { mockPostGoals } from '@/lib/mock-data/post-goals'
 import { mockPosts } from '@/lib/mock-data/posts'
-import type { Goal } from '@/lib/types'
+import type { Goal, GoalCadence } from '@/lib/types'
 
 export async function getGoals(userId: string): Promise<Goal[]> {
   return mockGoals.filter((g) => g.user_id === userId)
@@ -11,9 +16,36 @@ export async function getActiveGoals(userId: string): Promise<Goal[]> {
   return mockGoals.filter((g) => g.user_id === userId && g.status === 'active')
 }
 
+export async function getPlannedGoals(userId: string): Promise<Goal[]> {
+  return mockGoals.filter((g) => g.user_id === userId && g.status === 'planned')
+}
+
+// "비활성 목표" 탭에서 제목만 입력해 생성.
+export async function createPlannedGoal(userId: string, title: string): Promise<Goal> {
+  return addPlannedGoal(userId, title)
+}
+
+// "활성 목표" 탭에서 cadence까지 필수로 입력해 생성.
+export async function createActiveGoal(
+  userId: string,
+  title: string,
+  cadence: GoalCadence,
+  weeklyTargetCount: number | null
+): Promise<Goal> {
+  return addActiveGoal(userId, title, cadence, weeklyTargetCount)
+}
+
+// 비활성 목표 카드의 [활성화] 버튼 → cadence 선택 후 호출.
+export async function activateGoalById(
+  goalId: string,
+  cadence: GoalCadence,
+  weeklyTargetCount: number | null
+): Promise<Goal | null> {
+  return activateGoal(goalId, cadence, weeklyTargetCount)
+}
+
 // Monday–Sunday week containing the given date.
-// ASSUMPTION: using a fixed calendar week rather than a rolling 7-day
-// window. Revisit if a rolling window is actually wanted.
+// ASSUMPTION: fixed calendar week, not a rolling 7-day window.
 function getWeekRange(referenceDate: Date) {
   const day = referenceDate.getDay() // 0 = Sunday
   const diffToMonday = day === 0 ? -6 : 1 - day
@@ -28,7 +60,6 @@ function getWeekRange(referenceDate: Date) {
   return { start, end }
 }
 
-// Posts linked to a given goal, created within the current week.
 function getThisWeekCheckIns(goalId: string, now: Date) {
   const { start, end } = getWeekRange(now)
   const linkedPostIds = new Set(
@@ -47,7 +78,6 @@ function getGoalCompletionRatio(goal: Goal, now: Date): number {
   const checkIns = getThisWeekCheckIns(goal.id, now)
 
   if (goal.cadence === 'daily') {
-    // Unique calendar days this week with a check-in, out of 7.
     const uniqueDays = new Set(
       checkIns.map((p) => new Date(p.created_at).toDateString())
     )
@@ -61,9 +91,8 @@ function getGoalCompletionRatio(goal: Goal, now: Date): number {
   return 0
 }
 
-// Bonfire brightness = average completion ratio across all active goals.
-// No active goals yet → brightness is 0 (unlit). A goal has to be
-// created and activated with a target before the fire starts building.
+// Bonfire brightness as a 0–1 ratio (average completion across active goals).
+// No active goals → 0 (unlit).
 export async function getBonfireBrightness(userId: string): Promise<number> {
   const activeGoals = await getActiveGoals(userId)
   if (activeGoals.length === 0) return 0
@@ -72,4 +101,15 @@ export async function getBonfireBrightness(userId: string): Promise<number> {
   const ratios = activeGoals.map((goal) => getGoalCompletionRatio(goal, now))
 
   return ratios.reduce((sum, r) => sum + r, 0) / ratios.length
+}
+
+export type BrightnessTier = 1 | 2 | 3 | 4
+
+// Confirmed bands: 0–24% → 1, 25–49% → 2, 50–74% → 3, 75–100% → 4.
+export function getBrightnessTier(ratio: number): BrightnessTier {
+  const percent = ratio * 100
+  if (percent >= 75) return 4
+  if (percent >= 50) return 3
+  if (percent >= 25) return 2
+  return 1
 }
