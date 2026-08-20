@@ -4,6 +4,9 @@
 
 export type ProfileVisibility = 'public' | 'followers_only' | 'private'
 
+/** Bonfire brightness level. 1 = faintest, 4 = brightest. */
+export type BrightnessTier = 1 | 2 | 3 | 4
+
 export interface User {
   id: string
   username: string
@@ -108,3 +111,4 @@ export interface Notification {
   is_read: boolean
   created_at: string
 }
+
