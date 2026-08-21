@@ -1,17 +1,10 @@
-import { mockFollows } from '@/lib/mock-data/follows'
-import type { Follow } from '@/lib/types'
+import { mockUsers } from '@/lib/mock-data/users'
+import type { User } from '@/lib/types'
 
-export async function getFollowBetween(
-  followerId: string,
-  followingId: string
-): Promise<Follow | null> {
-  return (
-    mockFollows.find(
-      (f) => f.follower_id === followerId && f.following_id === followingId
-    ) ?? null
-  )
+export async function getUserByUsername(username: string): Promise<User | null> {
+  return mockUsers.find((u) => u.username === username) ?? null
 }
 
-export async function getPendingFollowRequests(userId: string): Promise<Follow[]> {
-  return mockFollows.filter((f) => f.following_id === userId && f.status === 'pending')
+export async function getUserById(userId: string): Promise<User | null> {
+  return mockUsers.find((u) => u.id === userId) ?? null
 }
