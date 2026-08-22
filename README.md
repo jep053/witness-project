@@ -88,6 +88,11 @@ the shape of the data mid-render.
 auth, auth before RLS. When two phases are in flight at once, a bug could
 belong to either and debugging turns into guesswork.
 
+**Tags are global; tag lists are personal.** A tag row is shared across users —
+two people writing about running get the same tag. Composer UIs offer every
+tag so existing ones get reused; filter UIs offer only tags the viewer has
+actually used, so the list reflects them rather than everyone.
+
 ## Progress
 
 | Step | |

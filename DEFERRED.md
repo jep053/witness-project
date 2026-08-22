@@ -61,6 +61,19 @@ comment section and a client-side call rather than a server prop. Keep
 `comment_count` on `PostWithMeta` so the button label stays correct without
 fetching.
 
+### Tag creation is blocked
+**Where:** `components/new-record.tsx` — `createTag()`
+
+`getOrCreateTag()` already exists and works: it reuses an existing tag by
+name (case-insensitive) or appends a new one. It's blocked anyway, because a
+tag with no post to attach it to is orphaned — and posting is blocked too.
+
+**To change:** unblock alongside the post write path, not before it.
+
+**Note:** `addMockTag()` mutates an in-memory array, so anything created this
+way disappears on server restart. Accepted deliberately rather than
+over-engineered; real persistence arrives with Supabase.
+
 ---
 
 ### New Record submit is a no-op
@@ -102,7 +115,7 @@ version as the fallback for users without an image.
 
 ---
 
-## Blocked on David (design)
+## Blocked on Design
 
 ### Bonfire is a wireframe bar
 **Where:** Profile screen (Step 4, D phase)
@@ -146,6 +159,11 @@ Supabase `confirm email` is disabled for MVP convenience.
 **Must be enabled before any public deployment.** Without it, anyone can
 register with an address they don't control.
 
+**Also required:** the built-in SMTP has a very low hourly send limit and is
+not usable in production. A custom SMTP provider must be configured at the
+same time verification is turned on, or sign-ups will silently fail once the
+limit is hit.
+
 ### Google OAuth
 Deferred until email/password auth is stable.
 
@@ -170,3 +188,19 @@ privacy (`Public` / `Followers` / `Private`). The confirmed spec replaced it
 with account-level `profile_visibility` as the master gate plus a per-post
 `is_hidden` override. Ask David to update the Figma so the two don't drift
 further — no per-post visibility selector is needed.
+
+## Known gaps
+
+### A filtered tag can outlive the posts that used it
+**Where:** `components/tag-filter.tsx` with `getMyTags()`
+
+The filter list is derived from tags the user has actually used. If every post
+carrying a selected tag is deleted, the tag disappears from the chip list while
+the `?tags=` parameter still names it — leaving a filter active with no visible
+way to see it's on.
+
+**Not reachable yet:** there is no delete. The "All" chip clears the parameter,
+so a user can always get out.
+
+**To handle:** when post deletion is built, drop any selected tag ids that no
+longer appear in the user's tag list.
