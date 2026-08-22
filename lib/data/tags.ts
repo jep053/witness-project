@@ -1,5 +1,7 @@
 import { mockTags, addMockTag } from '@/lib/mock-data/tags'
 import type { Tag } from '@/lib/types'
+import { mockPosts } from '@/lib/mock-data/posts'
+import { mockPostTags } from '@/lib/mock-data/posts'
 
 export async function getAllTags(): Promise<Tag[]> {
   return mockTags
@@ -15,4 +17,22 @@ export async function getOrCreateTag(name: string): Promise<Tag> {
   if (existing) return existing
 
   return addMockTag(trimmed)
+}
+
+// Tags are stored globally and shared across users — two people writing
+// "workout" get the same tag row. Filter UIs should use this instead of
+// getAllTags(), so the chip list stays scoped to what the user actually
+// writes about rather than growing with every tag anyone creates.
+export async function getMyTags(userId: string): Promise<Tag[]> {
+  const myPostIds = new Set(
+    mockPosts.filter((p) => p.user_id === userId).map((p) => p.id)
+  )
+
+  const usedTagIds = new Set(
+    mockPostTags
+      .filter((pt) => myPostIds.has(pt.post_id))
+      .map((pt) => pt.tag_id)
+  )
+
+  return mockTags.filter((t) => usedTagIds.has(t.id))
 }
