@@ -112,7 +112,7 @@ recorded there rather than in a comment that only its author will find.
 
 ## Credits
 
-- **Jeong Min Park** (`@handle`) — Product direction & implementation
+- **Jeong Min Park** (`@jep053`) — Product direction & implementation
 - **David** (`@DavidGitHubHandle`) — Software architecture & UI/Figma design
 
 ## License

@@ -26,6 +26,41 @@ should return `null` for a missing profile row, not silently substitute another 
 **Risk if missed:** every signed-in user resolves to the same profile. Not a
 crash — the app looks like it works. Verify by signing in as two accounts.
 
+### Candle toggles are local-only
+**Where:** `components/post-card.tsx` — `CandleButton` state
+
+Clicking a candle toggles local React state so the lit/unlit transition and
+the tap animation can be verified. Nothing is persisted: the state resets on
+refresh, and no row is written to `candle_lights`.
+
+**Why it looks like it works:** this is the risk. The button responds exactly
+as the finished feature will, so it's easy to assume the write path already
+exists. It doesn't — `lib/data/interactions.ts` is read-only.
+
+**To change:** replace the local state with a server action that inserts or
+deletes a `candle_lights` row, and seed the initial `lit` value from whether
+the current user has already lit that post.
+
+**Note:** this deliberately differs from New Record, which tells the user it
+isn't wired up. A candle is tapped casually and often — a notice on every tap
+would be noise, where a single blocked submit is not.
+
+### Comments are fetched for every post upfront
+**Where:** `lib/data/interactions.ts` — `getComments()`, called from the
+My Journey page for each post
+
+Comment sections are collapsed by default, but every post's comments are
+fetched when the page renders. Against fixtures this costs nothing.
+
+**Why it needs to change:** with real queries this is one round trip per post
+on every page load, for data most visitors never expand.
+
+**To change:** move the fetch to expand time. PostCard becomes responsible for
+loading its own comments on first open, which means a loading state inside the
+comment section and a client-side call rather than a server prop. Keep
+`comment_count` on `PostWithMeta` so the button label stays correct without
+fetching.
+
 ---
 
 ### New Record submit is a no-op
@@ -43,6 +78,12 @@ read-only.
 **Also needed:** `visibility` (Public / Followers / etc.) has no selection UI.
 David's design hardcodes `"Public"`. Request this from David before building
 the write path.
+
+**Design mismatch:** David's Figma still carries the old three-tier post
+privacy (`Public` / `Followers` / `Private`). The confirmed spec replaced it
+with account-level `profile_visibility` as the master gate plus a per-post
+`is_hidden` override. Ask David to update the Figma so the two don't drift
+further — no per-post visibility selector is needed.
 
 ---
 
@@ -123,3 +164,9 @@ Guests can see all sidebar links; non-`/others` links redirect to login.
 **To do:** show a message on the login page when `next` is present, explaining
 why they were redirected — framed around starting their own journey rather
 than "make an account". Planned alongside the Others screen.
+
+**Design mismatch:** David's Figma still carries the old three-tier post
+privacy (`Public` / `Followers` / `Private`). The confirmed spec replaced it
+with account-level `profile_visibility` as the master gate plus a per-post
+`is_hidden` override. Ask David to update the Figma so the two don't drift
+further — no per-post visibility selector is needed.
