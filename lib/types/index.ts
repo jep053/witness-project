@@ -73,11 +73,10 @@ export type FollowStatus = 'pending' | 'accepted'
 export interface Follow {
   id: string
   follower_id: string
-  following_id: string
+  followee_id: string
   status: FollowStatus
   created_at: string
 }
-
 export interface Candle {
   id: string
   post_id: string
