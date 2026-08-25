@@ -13,6 +13,44 @@ Roadmap reference:
 
 ## Blocked on Step 6 (real Supabase queries)
 
+### Follow requests can't be accepted or declined
+**Where:** `components/notification-item.tsx`
+
+Accept and Decline render for pending requests and are disabled. Whether they
+appear at all is real: `awaiting_response` checks the underlying follow row,
+so an already-resolved request correctly shows no buttons.
+
+**To change:** wire both to a server action that sets `follows.status` to
+`accepted` or deletes the row. Accepting should also create a
+`follow_accepted` notification for the requester.
+
+---
+
+### Notifications don't link anywhere
+**Where:** `components/notification-item.tsx`
+
+Each row is a static list item. Candle and comment notifications should open
+the post; follow notifications should open the actor's profile.
+
+**Why deferred:** post links need a `/post/[id]` route that doesn't exist and
+isn't in Step 4's scope. Profile links become possible once the Profile
+screen lands, but splitting the two would leave half the rows clickable and
+half not — more confusing than none.
+
+**To change:** add `/post/[id]`, then make the whole row a link.
+
+---
+
+### Notifications are never marked read
+**Where:** `is_read` is displayed but never written
+
+Unread rows are highlighted and counted in the sidebar badge. Nothing clears
+them, so the badge only grows.
+
+**To change:** mark read on view, or on click once rows are clickable. The
+sidebar count already comes from a separate function, so only the write is
+missing.
+
 ### `getCurrentUser()` mock-user fallback
 **Where:** `lib/auth/sessions.ts`
 
@@ -140,15 +178,6 @@ David's Figma still splits active goals into "진행 중 (기록 있음)" and
 
 **To do:** drop the `hasRecords` branch when porting; render all active goals
 in one grid. Ask David to update the Figma so the two don't drift further.
-
----
-
-### Settings screen
-Not designed yet. Sidebar has four items (My Journey, Others, Notifications,
-Profile); Settings is absent.
-
-**To do:** David is reflecting the previously agreed settings design in Figma.
-Add the sidebar entry when the screen itself is built.
 
 ---
 

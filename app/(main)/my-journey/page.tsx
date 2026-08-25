@@ -40,8 +40,8 @@ export default async function MyJourneyPage({
       {posts.length === 0 ? (
         <p className="py-16 text-center text-sm text-muted-foreground">
           {selectedTagIds.length > 0
-            ? "No entries with these tags."
-            : "No entries yet."}
+            ? "No posts with these tags."
+            : "No posts yet."}
         </p>
       ) : (
         <div className="space-y-4">
