@@ -34,4 +34,26 @@ export const mockNotifications: Notification[] = [
     is_read: false,
     created_at: '2026-08-19T12:00:00Z',
   },
+    // Triggered by follow-3 (user-3 accepted user-1's follow request)
+  {
+    id: 'notif-4',
+    recipient_id: 'user-1',
+    actor_id: 'user-3',
+    type: 'follow_accepted',
+    post_id: null,
+    follow_id: 'follow-3',
+    is_read: true,
+    created_at: '2026-02-05T09:00:00Z',
+  },
+  // An older candle, already seen — shows the read/unread contrast
+  {
+    id: 'notif-5',
+    recipient_id: 'user-1',
+    actor_id: 'user-2',
+    type: 'candle',
+    post_id: 'post-2',
+    follow_id: null,
+    is_read: true,
+    created_at: '2026-08-15T14:00:00Z',
+  },
 ]

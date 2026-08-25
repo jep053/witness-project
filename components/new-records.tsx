@@ -42,7 +42,7 @@ export function NewRecord({ tags }: { tags: Tag[] }) {
         className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border py-5 text-sm text-muted-foreground transition-colors hover:border-foreground/25 hover:text-foreground"
       >
         <Plus size={15} />
-        New Record — write today&apos;s entry
+        New Record — write today&apos;s post
       </button>
     );
   }
@@ -55,7 +55,7 @@ export function NewRecord({ tags }: { tags: Tag[] }) {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="How was today?"
-          aria-label="Entry text"
+          aria-label="Post text"
           rows={4}
           className="w-full resize-none border-0 bg-transparent text-sm leading-relaxed outline-none placeholder:text-muted-foreground"
         />

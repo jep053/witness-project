@@ -12,6 +12,18 @@ Every entry answers the same question — *what would we lose by changing this?*
 
 ## Product
 
+### Follows require approval
+
+Following someone creates a `pending` row. Content gated behind
+`followers_only` opens only when the request is accepted.
+
+**Why:** `followers_only` is meaningless if anyone can grant themselves the
+role. Approval is what makes the middle privacy tier real.
+
+**Cost of reversing:** the `FollowStatus` type, follow request notifications
+with their inline actions, and every access check that filters on
+`status === 'accepted'` — including forthcoming RLS policies.
+
 ### Feeds are reverse chronological, never engagement-ranked
 
 The Others feed orders posts by recency. Nothing is weighted by how many
@@ -172,6 +184,18 @@ tier boundaries are documented against ratio ranges.
 ---
 
 ## Scope
+
+### Notification filter tabs are post-MVP
+
+The notifications list is a single stream — no All / Candle / Comments /
+Follows tabs.
+
+**Why:** with four notification types and low volume, tabs would hide content
+rather than organize it. Whether filtering helps is a question about how
+notifications actually accumulate, which can't be answered before there are
+any. David's design doesn't include them either.
+
+**Room to grow:** additive. Nothing built now assumes a single list.
 
 ### Search covers tags and users; post body search is post-MVP
 
