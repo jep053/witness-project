@@ -25,6 +25,30 @@ export const mockPosts: Post[] = [
     is_hidden: false,
     created_at: '2026-08-20T07:30:00Z',
   },
+    {
+    id: 'post-10',
+    user_id: 'user-3',
+    content: 'Ran 12km this morning. Legs held up better than last week.',
+    image_url: null,
+    is_hidden: false,
+    created_at: '2026-08-23T07:30:00Z',
+  },
+  {
+    id: 'post-11',
+    user_id: 'user-4',
+    content: 'Finished the second chapter. Slower than I hoped, but done.',
+    image_url: null,
+    is_hidden: false,
+    created_at: '2026-08-24T21:00:00Z',
+  },
+  {
+    id: 'post-12',
+    user_id: 'user-5',
+    content: 'Day 30. Still going.',
+    image_url: null,
+    is_hidden: false,
+    created_at: '2026-08-24T22:00:00Z',
+  },
 ]
 
 export const mockPostTags: PostTag[] = [
