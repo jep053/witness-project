@@ -17,4 +17,13 @@ export const mockFollows: Follow[] = [
     status: 'pending',
     created_at: '2026-08-19T12:00:00Z',
   },
+  // user-1 follows user-3 (Kim) — accepted, so Kim's followers_only
+  // posts appear in user-1's Others feed
+  {
+    id: 'follow-3',
+    follower_id: 'user-1',
+    followee_id: 'user-3',
+    status: 'accepted',
+    created_at: '2026-02-05T09:00:00Z',
+  },
 ]

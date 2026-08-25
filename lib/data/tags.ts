@@ -3,6 +3,12 @@ import type { Tag } from '@/lib/types'
 import { mockPosts } from '@/lib/mock-data/posts'
 import { mockPostTags } from '@/lib/mock-data/posts'
 
+export async function searchTags(query: string): Promise<Tag[]> {
+  const q = query.trim().toLowerCase()
+  if (!q) return []
+  return mockTags.filter((t) => t.name.toLowerCase().includes(q))
+}
+
 export async function getAllTags(): Promise<Tag[]> {
   return mockTags
 }

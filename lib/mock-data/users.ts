@@ -28,6 +28,24 @@ export const mockUsers: User[] = [
     profile_visibility: 'followers_only',
     created_at: '2026-02-01T09:00:00Z',
   },
+  {
+    id: 'user-4',
+    username: 'quiet_lee',
+    display_name: 'Lee',
+    avatar_url: null,
+    bio: 'Writing for a small circle.',
+    profile_visibility: 'followers_only',
+    created_at: '2026-02-10T09:00:00Z',
+  },
+  {
+    id: 'user-5',
+    username: 'solo_park',
+    display_name: 'Park',
+    avatar_url: null,
+    bio: 'Keeping this to myself.',
+    profile_visibility: 'private',
+    created_at: '2026-02-15T09:00:00Z',
+  },
 ]
 
 export const mockUserSettings: UserSettings[] = mockUsers.map((u) => ({

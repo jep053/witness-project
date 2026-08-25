@@ -204,3 +204,16 @@ so a user can always get out.
 
 **To handle:** when post deletion is built, drop any selected tag ids that no
 longer appear in the user's tag list.
+
+--- 
+
+## Blocked on Profile page
+
+### Search results don't link to profiles
+**Where:** `components/search-results.tsx` — Users section
+
+User rows render as static `div`s with a chevron that suggests navigation but
+does nothing. `/profile/[username]` doesn't exist yet.
+
+**To change:** swap the `div` for `<Link href={`/profile/${user.username}`}>`
+when the Profile screen lands. Nothing else needs to move.
