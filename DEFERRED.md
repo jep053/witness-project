@@ -13,6 +13,23 @@ Roadmap reference:
 
 ## Blocked on Step 6 (real Supabase queries)
 
+### Settings controls don't persist
+**Where:** `components/settings-view.tsx`
+
+Profile visibility responds to clicks and shows the right explanatory copy per
+option, but the value lives in local React state — nothing is written, so a
+refresh restores the stored value. Notification toggles read real settings and
+are disabled. Password fields are disabled outright.
+
+**Why the three differ:** visibility is interactive because the copy changes
+per option and needs checking. Toggles are read-only because a switch that
+flips and then silently reverts reads as a bug. Password inputs are disabled
+because typing a password into a form that discards it is worse than not
+offering the field.
+
+**To change:** server actions writing `users.profile_visibility` and
+`user_settings`; password changes go through Supabase Auth.
+
 ### Follow requests can't be accepted or declined
 **Where:** `components/notification-item.tsx`
 
@@ -233,16 +250,3 @@ so a user can always get out.
 
 **To handle:** when post deletion is built, drop any selected tag ids that no
 longer appear in the user's tag list.
-
---- 
-
-## Blocked on Profile page
-
-### Search results don't link to profiles
-**Where:** `components/search-results.tsx` — Users section
-
-User rows render as static `div`s with a chevron that suggests navigation but
-does nothing. `/profile/[username]` doesn't exist yet.
-
-**To change:** swap the `div` for `<Link href={`/profile/${user.username}`}>`
-when the Profile screen lands. Nothing else needs to move.
