@@ -6,7 +6,29 @@ import {
 } from '@/lib/mock-data/goals'
 import { mockPostGoals } from '@/lib/mock-data/post-goals'
 import { mockPosts } from '@/lib/mock-data/posts'
-import type { Goal, GoalCadence } from '@/lib/types'
+import type { Goal, GoalCadence, BrightnessTier } from '@/lib/types'
+
+/**
+ * Per-goal brightness for the goal grid.
+ *
+ * Deliberately a separate path from getBonfireBrightness(): the bonfire
+ * averages raw ratios and quantizes once at the end, while each card
+ * quantizes its own ratio. Averaging these tiers would be the rejected
+ * approach — see DECISIONS.md.
+ */
+export async function getGoalTiers(
+  userId: string
+): Promise<Map<string, BrightnessTier>> {
+  const activeGoals = await getActiveGoals(userId)
+  const now = new Date()
+
+  return new Map(
+    activeGoals.map((goal) => [
+      goal.id,
+      getBrightnessTier(getGoalCompletionRatio(goal, now)),
+    ])
+  )
+}
 
 export async function getGoals(userId: string): Promise<Goal[]> {
   return mockGoals.filter((g) => g.user_id === userId)
@@ -20,12 +42,12 @@ export async function getPlannedGoals(userId: string): Promise<Goal[]> {
   return mockGoals.filter((g) => g.user_id === userId && g.status === 'planned')
 }
 
-// "비활성 목표" 탭에서 제목만 입력해 생성.
+// Created from the "Planned goals" tab with a title only.
 export async function createPlannedGoal(userId: string, title: string): Promise<Goal> {
   return addPlannedGoal(userId, title)
 }
 
-// "활성 목표" 탭에서 cadence까지 필수로 입력해 생성.
+// Created from the "Active goals" tab, where cadence is required.
 export async function createActiveGoal(
   userId: string,
   title: string,
@@ -35,7 +57,7 @@ export async function createActiveGoal(
   return addActiveGoal(userId, title, cadence, weeklyTargetCount)
 }
 
-// 비활성 목표 카드의 [활성화] 버튼 → cadence 선택 후 호출.
+// Called from a planned goal card's [Activate] button, after cadence is chosen.
 export async function activateGoalById(
   goalId: string,
   cadence: GoalCadence,
@@ -102,8 +124,6 @@ export async function getBonfireBrightness(userId: string): Promise<number> {
 
   return ratios.reduce((sum, r) => sum + r, 0) / ratios.length
 }
-
-export type BrightnessTier = 1 | 2 | 3 | 4
 
 // Confirmed bands: 0–24% → 1, 25–49% → 2, 50–74% → 3, 75–100% → 4.
 export function getBrightnessTier(ratio: number): BrightnessTier {

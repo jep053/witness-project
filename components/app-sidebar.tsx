@@ -8,8 +8,15 @@ const NAV_ITEMS = [
   { label: "My Journey", href: "/my-journey", Icon: Home },
   { label: "Others", href: "/others", Icon: Users },
   { label: "Notifications", href: "/notifications", Icon: Bell },
-  { label: "Profile", href: "/profile", Icon: User },
 ];
+
+function itemClass(active: boolean) {
+  return `font-hand relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[0.95rem] transition-all duration-150 ${
+    active
+      ? "bg-foreground/10 font-bold text-foreground"
+      : "font-normal text-foreground/55 hover:bg-foreground/[0.06]"
+  }`;
+}
 
 export function AppSidebar({
   username,
@@ -19,6 +26,7 @@ export function AppSidebar({
   unreadCount: number;
 }) {
   const pathname = usePathname();
+  const profileHref = username ? `/profile/${username}` : null;
 
   return (
     <aside className="bg-sidebar sticky top-0 flex h-screen w-52 flex-shrink-0 flex-col border-r border-border">
@@ -32,15 +40,7 @@ export function AppSidebar({
         {NAV_ITEMS.map(({ label, href, Icon }) => {
           const active = pathname === href;
           return (
-            <Link
-              key={href}
-              href={href}
-              className={`font-hand relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[0.95rem] transition-all duration-150 ${
-                active
-                  ? "bg-foreground/10 font-bold text-foreground"
-                  : "font-normal text-foreground/55 hover:bg-foreground/[0.06]"
-              }`}
-            >
+            <Link key={href} href={href} className={itemClass(active)}>
               <Icon size={15} strokeWidth={active ? 2.2 : 1.7} />
               {label}
               {href === "/notifications" && unreadCount > 0 && (
@@ -51,6 +51,15 @@ export function AppSidebar({
             </Link>
           );
         })}
+
+        {/* Guests have no profile to link to, so the item is omitted entirely
+            rather than pointing somewhere that would bounce them to login. */}
+        {profileHref && (
+          <Link href={profileHref} className={itemClass(pathname === profileHref)}>
+            <User size={15} strokeWidth={pathname === profileHref ? 2.2 : 1.7} />
+            Profile
+          </Link>
+        )}
       </nav>
 
       <div className="border-t border-foreground/10 px-5 py-5">

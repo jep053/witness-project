@@ -1,5 +1,26 @@
 import { mockFollows } from '@/lib/mock-data/follows'
 import type { Follow } from '@/lib/types'
+import { mockUsers } from '@/lib/mock-data/users'
+import type { User } from '@/lib/types'
+
+// Accepted only — a pending request isn't a follower yet.
+export async function getFollowers(userId: string): Promise<User[]> {
+  const followerIds = new Set(
+    mockFollows
+      .filter((f) => f.followee_id === userId && f.status === 'accepted')
+      .map((f) => f.follower_id)
+  )
+  return mockUsers.filter((u) => followerIds.has(u.id))
+}
+
+export async function getFollowing(userId: string): Promise<User[]> {
+  const followeeIds = new Set(
+    mockFollows
+      .filter((f) => f.follower_id === userId && f.status === 'accepted')
+      .map((f) => f.followee_id)
+  )
+  return mockUsers.filter((u) => followeeIds.has(u.id))
+}
 
 export async function getFollowBetween(
   followerId: string,

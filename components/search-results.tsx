@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { TagChip } from "@/components/tag-chip";
@@ -21,7 +22,11 @@ export function SearchResults({ tags, users }: { tags: Tag[]; users: User[] }) {
           </h2>
           <div className="flex flex-wrap gap-1.5">
             {tags.map((tag) => (
-                <TagChip key={tag.id} label={tag.name} href={`/others?tags=${tag.id}`} />
+              <TagChip
+                key={tag.id}
+                label={tag.name}
+                href={`/others?tags=${tag.id}`}
+              />
             ))}
           </div>
         </section>
@@ -35,15 +40,17 @@ export function SearchResults({ tags, users }: { tags: Tag[]; users: User[] }) {
           <ul className="space-y-2">
             {users.map((user) => (
               <li key={user.id}>
-                {/* TODO: link to /profile/[username] once that route exists */}
-                <div className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5">
+                <Link
+                  href={`/profile/${user.username}`}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted/50"
+                >
                   <Avatar name={user.username} size={26} />
                   <span className="text-sm font-medium">{user.username}</span>
                   <ChevronRight
                     size={13}
                     className="ml-auto text-muted-foreground"
                   />
-                </div>
+                </Link>
               </li>
             ))}
           </ul>
