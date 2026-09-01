@@ -40,6 +40,34 @@ export let mockGoals: Goal[] = [
     last_recorded_at: null,
     created_at: '2026-02-01T09:00:00Z',
   },
+  // user-2 (David) — public profile, so his goals are visible to everyone.
+  // Titles show on his profile; per-goal progress does not.
+  {
+    id: 'goal-4',
+    user_id: 'user-2',
+    title: 'Sketch every morning',
+    description: null,
+    status: 'active',
+    cadence_type: 'daily',
+    cadence_config: { type: 'daily' },
+    streak_count: 5,
+    last_recorded_at: '2026-08-24T08:00:00Z',
+    created_at: '2026-01-12T09:00:00Z',
+  },
+  // user-3 (Kim) — followers_only, and user-1 is an accepted follower,
+  // so this exercises the middle privacy tier on the profile screen.
+  {
+    id: 'goal-5',
+    user_id: 'user-3',
+    title: 'Marathon training',
+    description: null,
+    status: 'active',
+    cadence_type: 'weekly_count',
+    cadence_config: { type: 'weekly_count', target: 4 },
+    streak_count: 2,
+    last_recorded_at: '2026-08-23T07:30:00Z',
+    created_at: '2026-02-01T09:00:00Z',
+  },
 ]
 
 let nextGoalId = 4

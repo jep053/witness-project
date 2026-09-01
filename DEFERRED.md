@@ -170,6 +170,21 @@ version as the fallback for users without an image.
 
 ---
 
+### Seeded activity predates the current week
+**Where:** seed data vs `getThisWeekCheckIns()` in `lib/data/goals.ts`
+
+Bonfire brightness counts check-ins within the current Monday–Sunday week.
+The fixtures carry fixed August dates, so once the calendar moves past them
+every goal computes to tier 1 and every bonfire looks unlit.
+
+**Not a bug:** the calculation is correct; the data is simply old.
+
+**To handle:** when verifying bonfire behaviour against real queries, either
+generate check-in dates relative to `now()` in the seed script, or post
+through the app once writes exist.
+
+---
+
 ## Blocked on Design
 
 ### Bonfire is a wireframe bar
