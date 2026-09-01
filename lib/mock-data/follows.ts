@@ -8,6 +8,7 @@ export const mockFollows: Follow[] = [
     followee_id: 'user-1',
     status: 'accepted',
     created_at: '2026-01-13T09:00:00Z',
+    accepted_at: '2026-01-13T09:05:00Z',
   },
   // user-3 (Kim) requested to follow user-1 — still pending
   {
@@ -16,6 +17,7 @@ export const mockFollows: Follow[] = [
     followee_id: 'user-1',
     status: 'pending',
     created_at: '2026-08-19T12:00:00Z',
+    accepted_at: null,
   },
   // user-1 follows user-3 (Kim) — accepted, so Kim's followers_only
   // posts appear in user-1's Others feed
@@ -25,5 +27,6 @@ export const mockFollows: Follow[] = [
     followee_id: 'user-3',
     status: 'accepted',
     created_at: '2026-02-05T09:00:00Z',
+    accepted_at: '2026-02-05T09:05:00Z',
   },
 ]

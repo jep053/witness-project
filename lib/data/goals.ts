@@ -6,7 +6,7 @@ import {
 } from '@/lib/mock-data/goals'
 import { mockPostGoals } from '@/lib/mock-data/post-goals'
 import { mockPosts } from '@/lib/mock-data/posts'
-import type { Goal, GoalCadence, BrightnessTier } from '@/lib/types'
+import type { Goal, GoalCadenceType, CadenceConfig, BrightnessTier } from '@/lib/types'
 
 /**
  * Per-goal brightness for the goal grid.
@@ -47,24 +47,26 @@ export async function createPlannedGoal(userId: string, title: string): Promise<
   return addPlannedGoal(userId, title)
 }
 
+
 // Created from the "Active goals" tab, where cadence is required.
 export async function createActiveGoal(
   userId: string,
   title: string,
-  cadence: GoalCadence,
-  weeklyTargetCount: number | null
+  cadenceType: GoalCadenceType,
+  cadenceConfig: CadenceConfig | null
 ): Promise<Goal> {
-  return addActiveGoal(userId, title, cadence, weeklyTargetCount)
+  return addActiveGoal(userId, title, cadenceType, cadenceConfig)
 }
 
 // Called from a planned goal card's [Activate] button, after cadence is chosen.
 export async function activateGoalById(
   goalId: string,
-  cadence: GoalCadence,
-  weeklyTargetCount: number | null
+  cadenceType: GoalCadenceType,
+  cadenceConfig: CadenceConfig | null
 ): Promise<Goal | null> {
-  return activateGoal(goalId, cadence, weeklyTargetCount)
+  return activateGoal(goalId, cadenceType, cadenceConfig)
 }
+
 
 // Monday–Sunday week containing the given date.
 // ASSUMPTION: fixed calendar week, not a rolling 7-day window.
@@ -99,15 +101,18 @@ function getThisWeekCheckIns(goalId: string, now: Date) {
 function getGoalCompletionRatio(goal: Goal, now: Date): number {
   const checkIns = getThisWeekCheckIns(goal.id, now)
 
-  if (goal.cadence === 'daily') {
+  if (goal.cadence_type === 'daily') {
     const uniqueDays = new Set(
       checkIns.map((p) => new Date(p.created_at).toDateString())
     )
     return Math.min(uniqueDays.size / 7, 1)
   }
 
-  if (goal.cadence === 'weekly_count' && goal.weekly_target_count) {
-    return Math.min(checkIns.length / goal.weekly_target_count, 1)
+  if (
+    goal.cadence_type === 'weekly_count' &&
+    goal.cadence_config?.type === 'weekly_count'
+  ) {
+    return Math.min(checkIns.length / goal.cadence_config.target, 1)
   }
 
   return 0

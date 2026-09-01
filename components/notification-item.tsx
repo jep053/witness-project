@@ -39,12 +39,12 @@ export function NotificationItem({ n }: { n: NotificationWithContext }) {
             🕯
           </div>
         ) : (
-          <Avatar name={n.actor.username} size={32} />
+          <Avatar name={n.sender.username} size={32} />
         )}
 
         <div className="min-w-0 flex-1">
           <p className="text-sm leading-snug text-foreground">
-            <span className="font-semibold">{n.actor.username}</span>
+            <span className="font-semibold">{n.sender.username}</span>
             {describe(n)}
           </p>
           {n.preview && (

@@ -31,15 +31,6 @@ export interface Tag {
   name: string
 }
 
-export interface Post {
-  id: string
-  user_id: string
-  content: string
-  image_url: string | null
-  is_hidden: boolean
-  created_at: string
-}
-
 // Junction table — a post can have multiple tags (N:M)
 export interface PostTag {
   post_id: string
@@ -54,19 +45,6 @@ export interface PostGoal {
   goal_id: string
 }
 
-export type GoalStatus = 'planned' | 'active' | 'archived'
-export type GoalCadence = 'daily' | 'weekly_count'
-
-export interface Goal {
-  id: string
-  user_id: string
-  title: string
-  status: GoalStatus
-  cadence: GoalCadence | null // only set once status becomes 'active'
-  weekly_target_count: number | null // only used when cadence = 'weekly_count'
-  created_at: string
-  activated_at: string | null
-}
 
 export type FollowStatus = 'pending' | 'accepted'
 
@@ -76,6 +54,7 @@ export interface Follow {
   followee_id: string
   status: FollowStatus
   created_at: string
+  accepted_at: string | null
 }
 export interface Candle {
   id: string
@@ -100,14 +79,44 @@ export type NotificationType =
   | 'follow_request'
   | 'follow_accepted'
 
-export interface Notification {
+
+
+export interface Post {
   id: string
-  recipient_id: string
-  actor_id: string // the user who triggered it (who sent the candle, etc.)
-  type: NotificationType
-  post_id: string | null // relevant for candle/comment notifications
-  follow_id: string | null // relevant for follow notifications
-  is_read: boolean
+  user_id: string
+  content: string
+  is_hidden: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type GoalStatus = 'planned' | 'active' | 'archived'
+export type GoalCadenceType = 'daily' | 'weekly_count'
+
+/** Shape of goals.cadence_config, which varies by cadence_type. */
+export type CadenceConfig =
+  | { type: 'daily' }
+  | { type: 'weekly_count'; target: number }
+
+export interface Goal {
+  id: string
+  user_id: string
+  title: string
+  description: string | null
+  status: GoalStatus
+  cadence_type: GoalCadenceType | null // set once status becomes 'active'
+  cadence_config: CadenceConfig | null
+  streak_count: number
+  last_recorded_at: string | null
   created_at: string
 }
 
+export interface Notification {
+  id: string
+  sender_id: string
+  receiver_id: string
+  type: NotificationType
+  post_id: string | null
+  is_read: boolean
+  created_at: string
+}

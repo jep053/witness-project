@@ -1,4 +1,4 @@
-import type { Goal, GoalCadence } from '@/lib/types'
+import type { Goal, GoalCadenceType, CadenceConfig } from '@/lib/types'
 
 // `let` instead of `const` — same reasoning as tags: goals get created
 // and activated during mock-stage testing, so the array needs to grow
@@ -8,31 +8,37 @@ export let mockGoals: Goal[] = [
     id: 'goal-1',
     user_id: 'user-1',
     title: 'Ship Witness MVP',
+    description: null,
     status: 'active',
-    cadence: 'daily',
-    weekly_target_count: null,
+    cadence_type: 'daily',
+    cadence_config: { type: 'daily' },
+    streak_count: 3,
+    last_recorded_at: '2026-08-20T09:00:00Z',
     created_at: '2026-01-15T09:00:00Z',
-    activated_at: '2026-01-15T09:00:00Z',
   },
   {
     id: 'goal-2',
     user_id: 'user-1',
     title: 'Read one book a month',
+    description: null,
     status: 'active',
-    cadence: 'weekly_count',
-    weekly_target_count: 2,
+    cadence_type: 'weekly_count',
+    cadence_config: { type: 'weekly_count', target: 2 },
+    streak_count: 1,
+    last_recorded_at: '2026-08-17T09:00:00Z',
     created_at: '2026-01-20T09:00:00Z',
-    activated_at: '2026-01-22T09:00:00Z',
   },
   {
     id: 'goal-3',
     user_id: 'user-1',
     title: 'Learn Korean calligraphy',
+    description: null,
     status: 'planned', // not active yet — excluded from Bonfire brightness
-    cadence: null,
-    weekly_target_count: null,
+    cadence_type: null,
+    cadence_config: null,
+    streak_count: 0,
+    last_recorded_at: null,
     created_at: '2026-02-01T09:00:00Z',
-    activated_at: null,
   },
 ]
 
@@ -44,11 +50,13 @@ export function addPlannedGoal(userId: string, title: string): Goal {
     id: `goal-${nextGoalId++}`,
     user_id: userId,
     title,
+    description: null,
     status: 'planned',
-    cadence: null,
-    weekly_target_count: null,
+    cadence_type: null,
+    cadence_config: null,
+    streak_count: 0,
+    last_recorded_at: null,
     created_at: new Date().toISOString(),
-    activated_at: null,
   }
   mockGoals.push(newGoal)
   return newGoal
@@ -58,18 +66,20 @@ export function addPlannedGoal(userId: string, title: string): Goal {
 export function addActiveGoal(
   userId: string,
   title: string,
-  cadence: GoalCadence,
-  weeklyTargetCount: number | null
+  cadenceType: GoalCadenceType,
+  cadenceConfig: CadenceConfig | null
 ): Goal {
   const newGoal: Goal = {
     id: `goal-${nextGoalId++}`,
     user_id: userId,
     title,
+    description: null,
     status: 'active',
-    cadence,
-    weekly_target_count: cadence === 'weekly_count' ? weeklyTargetCount : null,
+    cadence_type: cadenceType,
+    cadence_config: cadenceConfig,
+    streak_count: 0,
+    last_recorded_at: null,
     created_at: new Date().toISOString(),
-    activated_at: new Date().toISOString(),
   }
   mockGoals.push(newGoal)
   return newGoal
@@ -79,16 +89,15 @@ export function addActiveGoal(
 // joining the Bonfire brightness calculation.
 export function activateGoal(
   goalId: string,
-  cadence: GoalCadence,
-  weeklyTargetCount: number | null
+  cadenceType: GoalCadenceType,
+  cadenceConfig: CadenceConfig | null
 ): Goal | null {
   const goal = mockGoals.find((g) => g.id === goalId)
   if (!goal) return null
 
   goal.status = 'active'
-  goal.cadence = cadence
-  goal.weekly_target_count = cadence === 'weekly_count' ? weeklyTargetCount : null
-  goal.activated_at = new Date().toISOString()
+  goal.cadence_type = cadenceType
+  goal.cadence_config = cadenceConfig
 
   return goal
 }

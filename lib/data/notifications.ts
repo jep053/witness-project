@@ -6,7 +6,7 @@ import { mockComments } from '@/lib/mock-data/interactions'
 import type { Notification, User } from '@/lib/types'
 
 export interface NotificationWithContext extends Notification {
-  actor: Pick<User, 'id' | 'username'>
+  sender: Pick<User, 'id' | 'username'>
   /** Comment text for `comment`, post excerpt for `candle`. Null otherwise. */
   preview: string | null
   /** False once a follow request has been accepted or declined. */
@@ -25,16 +25,16 @@ export async function getNotifications(
   userId: string
 ): Promise<NotificationWithContext[]> {
   return mockNotifications
-    .filter((n) => n.recipient_id === userId)
+    .filter((n) => n.receiver_id === userId)
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
     .map((n) => {
-      const actor = mockUsers.find((u) => u.id === n.actor_id)
+      const senderUser = mockUsers.find((u) => u.id === n.sender_id)
 
       let preview: string | null = null
       if (n.type === 'comment' && n.post_id) {
-        // The actor's most recent comment on that post.
+        // The sender's most recent comment on that post.
         const comment = mockComments
-          .filter((c) => c.post_id === n.post_id && c.user_id === n.actor_id)
+          .filter((c) => c.post_id === n.post_id && c.user_id === n.sender_id)
           .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0]
         if (comment) preview = truncate(comment.content)
       } else if (n.type === 'candle' && n.post_id) {
@@ -42,27 +42,31 @@ export async function getNotifications(
         if (post) preview = truncate(post.content)
       }
 
-      // Only pending requests still need buttons — per spec, they disappear
-      // once the request is accepted or declined.
-      const follow = n.follow_id
-        ? mockFollows.find((f) => f.id === n.follow_id)
-        : null
+      // follow_request notifications don't store follow_id:
+      // the row is always (follower_id = sender_id, followee_id = receiver_id).
+      const awaiting_response =
+        n.type === 'follow_request' &&
+        mockFollows.some(
+          (f) =>
+            f.follower_id === n.sender_id &&
+            f.followee_id === n.receiver_id &&
+            f.status === 'pending'
+        )
 
       return {
         ...n,
-        actor: {
-          id: n.actor_id,
-          username: actor?.username ?? 'unknown',
+        sender: {
+          id: n.sender_id,
+          username: senderUser?.username ?? 'unknown',
         },
         preview,
-        awaiting_response:
-          n.type === 'follow_request' && follow?.status === 'pending',
+        awaiting_response,
       }
     })
 }
 
 export async function getUnreadCount(userId: string): Promise<number> {
   return mockNotifications.filter(
-    (n) => n.recipient_id === userId && !n.is_read
+    (n) => n.receiver_id === userId && !n.is_read
   ).length
 }
