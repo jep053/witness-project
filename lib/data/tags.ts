@@ -1,3 +1,4 @@
+import { createClient } from '@/lib/supabase/server'
 import { mockTags, addMockTag } from '@/lib/mock-data/tags'
 import type { Tag } from '@/lib/types'
 import { mockPosts } from '@/lib/mock-data/posts'
@@ -10,8 +11,16 @@ export async function searchTags(query: string): Promise<Tag[]> {
 }
 
 export async function getAllTags(): Promise<Tag[]> {
-  return mockTags
+  const supabase = await createClient()
+  const { data, error } = await supabase.from('tags').select('*').order('name')
+
+  if (error) {
+    console.error('[getAllTags] query failed:', error.message)
+    return []
+  }
+  return data
 }
+
 
 // Reuses an existing tag by name (case-insensitive), or creates a new one.
 // Matches confirmed spec: "기존 태그와 이름이 같으면 재사용, 없으면 새로 생성".
@@ -30,15 +39,24 @@ export async function getOrCreateTag(name: string): Promise<Tag> {
 // getAllTags(), so the chip list stays scoped to what the user actually
 // writes about rather than growing with every tag anyone creates.
 export async function getMyTags(userId: string): Promise<Tag[]> {
-  const myPostIds = new Set(
-    mockPosts.filter((p) => p.user_id === userId).map((p) => p.id)
-  )
+  const supabase = await createClient()
 
-  const usedTagIds = new Set(
-    mockPostTags
-      .filter((pt) => myPostIds.has(pt.post_id))
-      .map((pt) => pt.tag_id)
-  )
+  // Inner-joins post_tags -> posts to scope tags to what this user has
+  // actually posted with, then -> tags for the display row.
+  const { data, error } = await supabase
+    .from('post_tags')
+    .select('tags(*), posts!inner(user_id)')
+    .eq('posts.user_id', userId)
 
-  return mockTags.filter((t) => usedTagIds.has(t.id))
+  if (error) {
+    console.error('[getMyTags] query failed:', error.message)
+    return []
+  }
+
+  const seen = new Map<string, Tag>()
+  for (const row of data) {
+    const tag = row.tags as unknown as Tag
+    if (tag) seen.set(tag.id, tag)
+  }
+  return [...seen.values()]
 }

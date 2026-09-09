@@ -1,3 +1,5 @@
+import { createClient } from '@/lib/supabase/server'
+
 import { mockCandles, mockComments } from '@/lib/mock-data/interactions'
 import { mockUsers } from '@/lib/mock-data/users'
 import type { Comment, User } from '@/lib/types'
@@ -11,19 +13,25 @@ export interface CommentWithAuthor extends Comment {
 // comment section is collapsed. Acceptable against fixtures; see DEFERRED.md
 // for the on-expand fetch this becomes in Phase 6.
 export async function getComments(postId: string): Promise<CommentWithAuthor[]> {
-  return mockComments
-    .filter((c) => c.post_id === postId)
-    .sort((a, b) => (a.created_at > b.created_at ? 1 : -1))
-    .map((c) => {
-      const author = mockUsers.find((u) => u.id === c.user_id)
-      return {
-        ...c,
-        author: {
-          id: c.user_id,
-          username: author?.username ?? 'unknown',
-        },
-      }
-    })
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('comments')
+    .select('*, users(id, username)')
+    .eq('post_id', postId)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('[getComments] query failed:', error.message)
+    return []
+  }
+
+  return (data ?? []).map((c) => {
+    const author = c.users as unknown as Pick<User, 'id' | 'username'> | null
+    return {
+      ...c,
+      author: author ?? { id: c.user_id, username: 'unknown' },
+    }
+  })
 }
 
 /** Whether the given user has lit a candle on the given post. */
