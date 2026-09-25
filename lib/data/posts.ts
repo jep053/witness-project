@@ -1,3 +1,5 @@
+import { createClient } from '@/lib/supabase/server'
+
 import { mockPosts, mockPostTags } from '@/lib/mock-data/posts'
 import { mockTags } from '@/lib/mock-data/tags'
 import { mockGoals } from '@/lib/mock-data/goals'
@@ -14,65 +16,67 @@ export interface FeedPost extends PostWithMeta {
   viewer_follows_author: boolean
 }
 
-/**
- * The Others feed: other people's posts, newest first.
- *
- * Eligibility mirrors what RLS will enforce in Step 5 — keep the two in sync:
- *   - never the viewer's own posts (those live on My Journey)
- *   - never `is_hidden` posts, regardless of who wrote them
- *   - `public` profiles are visible to everyone
- *   - `followers_only` profiles are visible only to accepted followers
- *   - `private` profiles never appear
- *
- * Ordering is recency, deliberately. See DECISIONS.md — ranking by candles
- * would reintroduce the metric the product hides.
- */
 export async function getFeedPosts(
   viewerId: string | null,
   tagIds?: string[]
 ): Promise<FeedPost[]> {
+  const supabase = await createClient()
   const followingIds = viewerId
     ? await getFollowingIds(viewerId)
     : new Set<string>()
 
-  const authorsById = new Map(mockUsers.map((u) => [u.id, u]))
+  // profile_visibility (public/followers_only/private) is NOT re-checked
+  // here — RLS's can_view_profile() already enforces that on the SELECT.
+  // What's left as app-level filtering is is_hidden and excluding the
+  // viewer's own posts, neither of which RLS is responsible for.
+  let query = supabase
+    .from('posts')
+    .select('*, users(id, username)')
+    .eq('is_hidden', false)
+    .order('created_at', { ascending: false })
 
-  let posts = mockPosts.filter((post) => {
-    if (post.user_id === viewerId) return false
-    if (post.is_hidden) return false
-
-    const author = authorsById.get(post.user_id)
-    if (!author) return false
-
-    switch (author.profile_visibility) {
-      case 'public':
-        return true
-      case 'followers_only':
-        return followingIds.has(author.id)
-      case 'private':
-        return false
-    }
-  })
-
-  if (tagIds && tagIds.length > 0) {
-    const matchingPostIds = new Set(
-      mockPostTags
-        .filter((pt) => tagIds.includes(pt.tag_id))
-        .map((pt) => pt.post_id)
-    )
-    posts = posts.filter((p) => matchingPostIds.has(p.id))
+  if (viewerId) {
+    query = query.neq('user_id', viewerId)
   }
 
-  return posts
-    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
-    .map((post) => {
-      const author = authorsById.get(post.user_id)!
-      return {
-        ...attachMeta(post),
-        author: { id: author.id, username: author.username },
-        viewer_follows_author: followingIds.has(author.id),
-      }
-    })
+  const { data: postsData, error: postsError } = await query
+
+  if (postsError) {
+    console.error('[getFeedPosts] posts query failed:', postsError.message)
+    return []
+  }
+
+  type FeedRow = Post & { users: Pick<User, 'id' | 'username'> | null }
+  let rows = (postsData ?? []) as FeedRow[]
+
+  if (tagIds && tagIds.length > 0) {
+    const { data: postTagsData, error: filterError } = await supabase
+      .from('post_tags')
+      .select('post_id')
+      .in('tag_id', tagIds)
+
+    if (filterError) {
+      console.error('[getFeedPosts] tag filter failed:', filterError.message)
+      return []
+    }
+
+    const matchingPostIds = new Set((postTagsData ?? []).map((pt) => pt.post_id))
+    rows = rows.filter((p) => matchingPostIds.has(p.id))
+  }
+
+  const authorByPost = new Map(rows.map((r) => [r.id, r.users]))
+  const posts: Post[] = rows.map(({ users, ...post }) => post)
+
+  const meta = await attachMetaBatch(supabase, posts)
+
+  return meta.map((post) => {
+    const author = authorByPost.get(post.id)
+    return {
+      ...post,
+      author: author ?? { id: post.user_id, username: 'unknown' },
+      viewer_follows_author: followingIds.has(post.user_id),
+    }
+  })
 }
 
 export interface PostWithMeta extends Post {
@@ -82,6 +86,8 @@ export interface PostWithMeta extends Post {
   comment_count: number
 }
 
+// Mock-based single-post meta lookup — still backs getFeedPosts/getUserPosts/
+// getPostById until the Others screen's turn (Step 6-2 phase 2).
 function attachMeta(post: Post): PostWithMeta {
   const tagIds = mockPostTags
     .filter((pt) => pt.post_id === post.id)
@@ -100,24 +106,99 @@ function attachMeta(post: Post): PostWithMeta {
   }
 }
 
+// Real Supabase batch meta lookup — backs getMyPosts. Kept as four parallel
+// single-table queries deliberately, so each table's RLS can be verified
+// independently. Collapse into one nested select once all four are
+// confirmed working against seed data.
+async function attachMetaBatch(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  posts: Post[]
+): Promise<PostWithMeta[]> {
+  if (posts.length === 0) return []
+  const postIds = posts.map((p) => p.id)
+
+  const [tagsRes, goalsRes, candlesRes, commentsRes] = await Promise.all([
+    supabase.from('post_tags').select('post_id, tags(*)').in('post_id', postIds),
+    supabase.from('post_goals').select('post_id, goals(*)').in('post_id', postIds),
+    supabase.from('candle_lights').select('post_id').in('post_id', postIds),
+    supabase.from('comments').select('post_id').in('post_id', postIds),
+  ])
+
+  if (tagsRes.error) console.error('[getMyPosts] post_tags failed:', tagsRes.error.message)
+  if (goalsRes.error) console.error('[getMyPosts] post_goals failed:', goalsRes.error.message)
+  if (candlesRes.error) console.error('[getMyPosts] candle_lights failed:', candlesRes.error.message)
+  if (commentsRes.error) console.error('[getMyPosts] comments failed:', commentsRes.error.message)
+
+  const tagsByPost = new Map<string, Tag[]>()
+  for (const row of tagsRes.data ?? []) {
+    const list = tagsByPost.get(row.post_id) ?? []
+    if (row.tags) list.push(row.tags as unknown as Tag)
+    tagsByPost.set(row.post_id, list)
+  }
+
+  const goalsByPost = new Map<string, Goal[]>()
+  for (const row of goalsRes.data ?? []) {
+    const list = goalsByPost.get(row.post_id) ?? []
+    if (row.goals) list.push(row.goals as unknown as Goal)
+    goalsByPost.set(row.post_id, list)
+  }
+
+  const candleCountByPost = new Map<string, number>()
+  for (const row of candlesRes.data ?? []) {
+    candleCountByPost.set(row.post_id, (candleCountByPost.get(row.post_id) ?? 0) + 1)
+  }
+
+  const commentCountByPost = new Map<string, number>()
+  for (const row of commentsRes.data ?? []) {
+    commentCountByPost.set(row.post_id, (commentCountByPost.get(row.post_id) ?? 0) + 1)
+  }
+
+  return posts.map((post) => ({
+    ...post,
+    tags: tagsByPost.get(post.id) ?? [],
+    goals: goalsByPost.get(post.id) ?? [],
+    candle_count: candleCountByPost.get(post.id) ?? 0,
+    comment_count: commentCountByPost.get(post.id) ?? 0,
+  }))
+}
+
 // Posts belonging to the current user (My Journey feed).
 // tagIds: optional multi-select filter, OR logic — matches confirmed spec.
 export async function getMyPosts(
   userId: string,
   tagIds?: string[]
 ): Promise<PostWithMeta[]> {
-  let posts = mockPosts.filter((p) => p.user_id === userId)
+  const supabase = await createClient()
+
+  const { data: postsData, error: postsError } = await supabase
+    .from('posts')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (postsError) {
+    console.error('[getMyPosts] posts query failed:', postsError.message)
+    return []
+  }
+
+  let posts = (postsData ?? []) as Post[]
 
   if (tagIds && tagIds.length > 0) {
-    const matchingPostIds = new Set(
-      mockPostTags
-        .filter((pt) => tagIds.includes(pt.tag_id))
-        .map((pt) => pt.post_id)
-    )
+    const { data: postTagsData, error: filterError } = await supabase
+      .from('post_tags')
+      .select('post_id')
+      .in('tag_id', tagIds)
+
+    if (filterError) {
+      console.error('[getMyPosts] tag filter failed:', filterError.message)
+      return []
+    }
+
+    const matchingPostIds = new Set((postTagsData ?? []).map((pt) => pt.post_id))
     posts = posts.filter((p) => matchingPostIds.has(p.id))
   }
 
-  return posts.map(attachMeta).sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+  return attachMetaBatch(supabase, posts)
 }
 
 // Posts from a specific user, respecting is_hidden — used on Others' profile pages.

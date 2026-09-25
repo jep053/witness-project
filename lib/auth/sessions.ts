@@ -18,11 +18,7 @@ export async function getCurrentUser(): Promise<User | null> {
 
   if (!user) return null
 
-  // TEMP: profiles still come from the mock layer, which is keyed by
-  // 'user-1' rather than real auth UUIDs. Falls back to the primary mock
-  // user so screens can be verified against a real session.
-  // Remove this fallback when swapping in real Supabase queries.
-  return (await getUserById(user.id)) ?? (await getUserById('user-1'))
+  return getUserById(user.id)
 }
 
 /** Auth session only — use when you just need the ID, without a profile lookup. */

@@ -1,3 +1,4 @@
+import { createClient } from '@/lib/supabase/server'
 import { mockUsers } from '@/lib/mock-data/users'
 import type { User } from '@/lib/types'
 import { getFollowBetween } from '@/lib/data/follows'
@@ -22,7 +23,19 @@ export async function getUserByUsername(username: string): Promise<User | null> 
 }
 
 export async function getUserById(userId: string): Promise<User | null> {
-  return mockUsers.find((u) => u.id === userId) ?? null
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', userId)
+    .single()
+
+  // .single() errors on 0 or >1 rows. 0 rows here usually means the auth
+  // user has no matching `users` row yet (pre-signup-flow, Step 3) —
+  // not necessarily a bug. Don't treat this as a fatal error.
+  if (error || !data) return null
+
+  return data as User
 }
 
 export type ProfileAccess = 'self' | 'visible' | 'locked_followers' | 'locked_private'

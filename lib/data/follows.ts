@@ -1,3 +1,4 @@
+import { createClient } from '@/lib/supabase/server'
 import { mockFollows } from '@/lib/mock-data/follows'
 import type { Follow } from '@/lib/types'
 import { mockUsers } from '@/lib/mock-data/users'
@@ -43,9 +44,17 @@ export async function getPendingFollowRequests(userId: string): Promise<Follow[]
 // followers-only content. Returned as a Set because callers check
 // membership per post while rendering a feed.
 export async function getFollowingIds(userId: string): Promise<Set<string>> {
-  return new Set(
-    mockFollows
-      .filter((f) => f.follower_id === userId && f.status === 'accepted')
-      .map((f) => f.followee_id)
-  )
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('follows')
+    .select('followee_id')
+    .eq('follower_id', userId)
+    .eq('status', 'accepted')
+
+  if (error) {
+    console.error('[getFollowingIds] query failed:', error.message)
+    return new Set()
+  }
+
+  return new Set((data ?? []).map((f) => f.followee_id))
 }
