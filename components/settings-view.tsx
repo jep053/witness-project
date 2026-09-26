@@ -5,6 +5,8 @@ import { ChevronRight } from "lucide-react";
 import { Toggle } from "@/components/toggle";
 import type { ProfileVisibility, User, UserSettings } from "@/lib/types";
 
+import { logout } from '@/app/auth/actions'
+
 const VISIBILITY_OPTIONS: { value: ProfileVisibility; label: string }[] = [
   { value: "public", label: "Public" },
   { value: "followers_only", label: "Followers" },
@@ -231,6 +233,21 @@ export function SettingsView({
           ))}
         </div>
       </section>
+
+      {/* ── Logout ───────────────────────────────────────────────────── */}
+      <section className="space-y-3">
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <form action={logout}>
+            <button
+              type="submit"
+              className="flex items-center px-4 py-3.5 w-full text-sm font-medium text-destructive hover:bg-destructive/[0.06] transition-colors"
+            >
+              Log out
+            </button>
+          </form>
+        </div>
+      </section>
+
     </div>
   );
 }

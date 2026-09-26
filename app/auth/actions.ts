@@ -7,20 +7,32 @@ import { createClient } from '@/lib/supabase/server'
 export async function signup(formData: FormData) {
   const supabase = await createClient()
 
+  const username = (formData.get('username') as string)?.trim()
   const email = formData.get('email') as string
   const password = formData.get('password') as string
   const next = (formData.get('next') as string) || '/'
 
-  const { error } = await supabase.auth.signUp({ email, password })
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { username },
+    },
+  })
 
   if (error) {
+    // Postgres raises a unique_violation from inside the trigger when the
+    // username is taken; Supabase surfaces it as a generic "Database error
+    // saving new user" rather than a clean message, so translate it here.
+    const message = error.message.includes('Database error')
+      ? 'That username is already taken.'
+      : error.message
+
     redirect(
-      `/auth/signup?error=${encodeURIComponent(error.message)}&next=${encodeURIComponent(next)}`
+      `/auth/signup?error=${encodeURIComponent(message)}&next=${encodeURIComponent(next)}`
     )
   }
 
-  // Email verification is off for MVP, so the user is signed in immediately.
-  // TODO: before public launch, insert a "verify your email" step here.
   revalidatePath('/', 'layout')
   redirect(next)
 }
