@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server'
-import { mockUsers } from '@/lib/mock-data/users'
 import type { User } from '@/lib/types'
 import { getFollowBetween } from '@/lib/data/follows'
 
@@ -10,16 +9,38 @@ export async function searchUsers(
   query: string,
   viewerId: string | null
 ): Promise<User[]> {
-  const q = query.trim().toLowerCase()
+  const q = query.trim()
   if (!q) return []
 
-  return mockUsers.filter(
-    (u) => u.id !== viewerId && u.username.toLowerCase().includes(q)
-  )
+  const supabase = await createClient()
+  let request = supabase.from('users').select('*').ilike('username', `%${q}%`)
+
+  if (viewerId) {
+    request = request.neq('id', viewerId)
+  }
+
+  const { data, error } = await request
+
+  if (error) {
+    console.error('[searchUsers] query failed:', error.message)
+    return []
+  }
+  return data as User[]
 }
 
 export async function getUserByUsername(username: string): Promise<User | null> {
-  return mockUsers.find((u) => u.username === username) ?? null
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('username', username)
+    .maybeSingle()
+
+  if (error) {
+    console.error('[getUserByUsername] query failed:', error.message)
+    return null
+  }
+  return data as User | null
 }
 
 export async function getUserById(userId: string): Promise<User | null> {
@@ -28,14 +49,13 @@ export async function getUserById(userId: string): Promise<User | null> {
     .from('users')
     .select('*')
     .eq('id', userId)
-    .single()
+    .maybeSingle()
 
-  // .single() errors on 0 or >1 rows. 0 rows here usually means the auth
-  // user has no matching `users` row yet (pre-signup-flow, Step 3) —
-  // not necessarily a bug. Don't treat this as a fatal error.
-  if (error || !data) return null
-
-  return data as User
+  if (error) {
+    console.error('[getUserById] query failed:', error.message)
+    return null
+  }
+  return data as User | null
 }
 
 export type ProfileAccess = 'self' | 'visible' | 'locked_followers' | 'locked_private'
