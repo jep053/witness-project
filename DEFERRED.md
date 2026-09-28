@@ -213,6 +213,8 @@ with account-level `profile_visibility` as the master gate plus a per-post
 `is_hidden` override. Ask David to update the Figma so the two don't drift
 further — no per-post visibility selector is needed.
 
+---
+
 ## Known gaps
 
 ### A filtered tag can outlive the posts that used it
@@ -228,3 +230,14 @@ so a user can always get out.
 
 **To handle:** when post deletion is built, drop any selected tag ids that no
 longer appear in the user's tag list.
+
+---
+## Post MVP
+
+### Tags
+- Ghost tag cleanup: periodic delete of tags with no post_tags rows
+  (rare now: tags are created together with their post; only failure paths leave orphans)
+- Tag merge (admin) and blocklist for tag names
+- getAllTags/searchTags rely on PostgREST's default 1000-row cap; paginate or move to an RPC if the tag list grows
+- Goals: getActiveGoals is called 3x per Profile render (page, getBonfireBrightness, getGoalTiers)
+
