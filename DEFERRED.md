@@ -116,43 +116,6 @@ comment section and a client-side call rather than a server prop. Keep
 `comment_count` on `PostWithMeta` so the button label stays correct without
 fetching.
 
-### Tag creation is blocked
-**Where:** `components/new-record.tsx` — `createTag()`
-
-`getOrCreateTag()` already exists and works: it reuses an existing tag by
-name (case-insensitive) or appends a new one. It's blocked anyway, because a
-tag with no post to attach it to is orphaned — and posting is blocked too.
-
-**To change:** unblock alongside the post write path, not before it.
-
-**Note:** `addMockTag()` mutates an in-memory array, so anything created this
-way disappears on server restart. Accepted deliberately rather than
-over-engineered; real persistence arrives with Supabase.
-
----
-
-### New Record submit is a no-op
-**Where:** `app/(main)/my-journey/` — New Record accordion
-
-The accordion is fully interactive (text, tag add/remove, hidden toggle,
-cancel) but the submit handler deliberately does nothing except tell the user
-posting isn't wired up. Kept as a placeholder so layout spacing and interaction
-patterns can be verified during the read-only phase.
-
-**To remove:** replace the handler body with a server action calling a real
-`createPost()`. No write functions exist in `lib/data/` yet — `posts.ts` is
-read-only.
-
-**Also needed:** `visibility` (Public / Followers / etc.) has no selection UI.
-David's design hardcodes `"Public"`. Request this from David before building
-the write path.
-
-**Design mismatch:** David's Figma still carries the old three-tier post
-privacy (`Public` / `Followers` / `Private`). The confirmed spec replaced it
-with account-level `profile_visibility` as the master gate plus a per-post
-`is_hidden` override. Ask David to update the Figma so the two don't drift
-further — no per-post visibility selector is needed.
-
 ---
 
 ### Avatar images
