@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getNotifications } from "@/lib/data/notifications";
 import { NotificationItem } from "@/components/notification-item";
+import { MarkNotificationsRead } from "@/components/mark-notifications-read";
 
 export default async function NotificationsPage() {
   const user = await getCurrentUser();
@@ -11,6 +12,7 @@ export default async function NotificationsPage() {
 
   return (
     <div className="mx-auto max-w-[680px] space-y-5 px-8 py-10">
+      <MarkNotificationsRead />
       <h1 className="text-lg font-semibold">Notifications</h1>
 
       {notifications.length === 0 ? (
