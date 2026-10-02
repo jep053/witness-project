@@ -67,7 +67,7 @@ export async function getFeedPosts(
   const authorByPost = new Map(rows.map((r) => [r.id, r.users]))
   const posts: Post[] = rows.map(({ users, ...post }) => post)
 
-  const meta = await attachMetaBatch(supabase, posts)
+  const meta = await attachMetaBatch(supabase, posts, viewerId)
 
   return meta.map((post) => {
     const author = authorByPost.get(post.id)
@@ -84,10 +84,12 @@ export interface PostWithMeta extends Post {
   goals: Goal[] // goals this post counted as a check-in toward
   candle_count: number
   comment_count: number
+  /** Whether the viewer (if signed in) has lit a candle on this post. */
+  viewer_has_lit: boolean
 }
 
-// Mock-based single-post meta lookup — still backs getFeedPosts/getUserPosts/
-// getPostById until the Others screen's turn (Step 6-2 phase 2).
+// Mock-based single-post meta lookup — still backs getUserPosts/getPostById
+// until the Others/Profile screens' write paths land.
 function attachMeta(post: Post): PostWithMeta {
   const tagIds = mockPostTags
     .filter((pt) => pt.post_id === post.id)
@@ -103,16 +105,19 @@ function attachMeta(post: Post): PostWithMeta {
     goals: mockGoals.filter((g) => goalIds.includes(g.id)),
     candle_count: mockCandles.filter((c) => c.post_id === post.id).length,
     comment_count: mockComments.filter((c) => c.post_id === post.id).length,
+    viewer_has_lit: false,
   }
 }
 
-// Real Supabase batch meta lookup — backs getMyPosts. Kept as four parallel
-// single-table queries deliberately, so each table's RLS can be verified
-// independently. Collapse into one nested select once all four are
+// Real Supabase batch meta lookup — backs getMyPosts/getFeedPosts. Kept as
+// parallel single-table queries deliberately, so each table's RLS can be
+// verified independently. Collapse into one nested select once all four
+// (five, with candle_lights doubling as count + viewer-lit lookup) are
 // confirmed working against seed data.
 async function attachMetaBatch(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  posts: Post[]
+  posts: Post[],
+  viewerId: string | null
 ): Promise<PostWithMeta[]> {
   if (posts.length === 0) return []
   const postIds = posts.map((p) => p.id)
@@ -120,14 +125,14 @@ async function attachMetaBatch(
   const [tagsRes, goalsRes, candlesRes, commentsRes] = await Promise.all([
     supabase.from('post_tags').select('post_id, tags(*)').in('post_id', postIds),
     supabase.from('post_goals').select('post_id, goals(*)').in('post_id', postIds),
-    supabase.from('candle_lights').select('post_id').in('post_id', postIds),
+    supabase.from('candle_lights').select('post_id, user_id').in('post_id', postIds),
     supabase.from('comments').select('post_id').in('post_id', postIds),
   ])
 
-  if (tagsRes.error) console.error('[getMyPosts] post_tags failed:', tagsRes.error.message)
-  if (goalsRes.error) console.error('[getMyPosts] post_goals failed:', goalsRes.error.message)
-  if (candlesRes.error) console.error('[getMyPosts] candle_lights failed:', candlesRes.error.message)
-  if (commentsRes.error) console.error('[getMyPosts] comments failed:', commentsRes.error.message)
+  if (tagsRes.error) console.error('[attachMetaBatch] post_tags failed:', tagsRes.error.message)
+  if (goalsRes.error) console.error('[attachMetaBatch] post_goals failed:', goalsRes.error.message)
+  if (candlesRes.error) console.error('[attachMetaBatch] candle_lights failed:', candlesRes.error.message)
+  if (commentsRes.error) console.error('[attachMetaBatch] comments failed:', commentsRes.error.message)
 
   const tagsByPost = new Map<string, Tag[]>()
   for (const row of tagsRes.data ?? []) {
@@ -144,8 +149,10 @@ async function attachMetaBatch(
   }
 
   const candleCountByPost = new Map<string, number>()
+  const litByViewerPost = new Set<string>()
   for (const row of candlesRes.data ?? []) {
     candleCountByPost.set(row.post_id, (candleCountByPost.get(row.post_id) ?? 0) + 1)
+    if (viewerId && row.user_id === viewerId) litByViewerPost.add(row.post_id)
   }
 
   const commentCountByPost = new Map<string, number>()
@@ -159,6 +166,7 @@ async function attachMetaBatch(
     goals: goalsByPost.get(post.id) ?? [],
     candle_count: candleCountByPost.get(post.id) ?? 0,
     comment_count: commentCountByPost.get(post.id) ?? 0,
+    viewer_has_lit: litByViewerPost.has(post.id),
   }))
 }
 
@@ -198,7 +206,7 @@ export async function getMyPosts(
     posts = posts.filter((p) => matchingPostIds.has(p.id))
   }
 
-  return attachMetaBatch(supabase, posts)
+  return attachMetaBatch(supabase, posts, userId)
 }
 
 // Posts from a specific user, respecting is_hidden — used on Others' profile pages.
