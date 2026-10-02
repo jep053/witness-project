@@ -1,4 +1,9 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { usePathname } from "next/navigation";
 import { Avatar } from "@/components/avatar";
+import { respondToFollowRequest } from "@/app/actions/follows";
 import type { NotificationWithContext } from "@/lib/data/notifications";
 
 function formatTime(iso: string): string {
@@ -22,6 +27,25 @@ function describe(n: NotificationWithContext): string {
 }
 
 export function NotificationItem({ n }: { n: NotificationWithContext }) {
+  const pathname = usePathname();
+  const [resolution, setResolution] = useState<"accepted" | "declined" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  const respond = (accept: boolean) => {
+    setError(null);
+    startTransition(async () => {
+      const result = await respondToFollowRequest(n.sender.id, accept, pathname);
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
+      setResolution(result.status);
+    });
+  };
+
+  const showActions = n.awaiting_response && resolution === null;
+
   return (
     <li
       className={`rounded-xl border transition-colors ${
@@ -52,27 +76,39 @@ export function NotificationItem({ n }: { n: NotificationWithContext }) {
               &ldquo;{n.preview}&rdquo;
             </p>
           )}
+          {error && (
+            <p role="alert" className="mt-0.5 text-xs text-destructive">
+              {error}
+            </p>
+          )}
           <p className="mt-1 text-[11px] text-muted-foreground">
             {formatTime(n.created_at)}
           </p>
         </div>
 
-        {n.awaiting_response && (
+        {showActions && (
           <div className="flex flex-shrink-0 items-center gap-2">
-            {/* NOT IMPLEMENTED — writes follows.status, lands in Phase 6. */}
             <button
-              disabled
+              onClick={() => respond(true)}
+              disabled={isPending}
               className="rounded-lg bg-foreground px-3 py-1.5 text-xs text-primary-foreground disabled:opacity-40"
             >
               Accept
             </button>
             <button
-              disabled
+              onClick={() => respond(false)}
+              disabled={isPending}
               className="rounded-lg border border-border px-3 py-1.5 text-xs text-foreground disabled:opacity-40"
             >
               Decline
             </button>
           </div>
+        )}
+
+        {resolution && (
+          <span className="flex-shrink-0 text-xs text-muted-foreground">
+            {resolution === "accepted" ? "Accepted" : "Declined"}
+          </span>
         )}
 
         {!n.is_read && (

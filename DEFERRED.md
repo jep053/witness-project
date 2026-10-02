@@ -241,3 +241,8 @@ longer appear in the user's tag list.
 - getAllTags/searchTags rely on PostgREST's default 1000-row cap; paginate or move to an RPC if the tag list grows
 - Goals: getActiveGoals is called 3x per Profile render (page, getBonfireBrightness, getGoalTiers)
 
+## UI Refactor
+- FollowButton UX: unfollow fires immediately on click with no confirmation
+  or hover affordance ("Following" doesn't preview as "Unfollow"). Works
+  correctly, just not discoverable/safe — revisit with the UI design pass.
+- Need to make Login, SignIn UI

@@ -81,7 +81,7 @@ export function ProfileView({
             Edit profile
           </button>
         ) : (
-          <FollowButton status={followStatus} />
+          <FollowButton profileId={profile.id} status={followStatus} />
         )}
       </div>
 

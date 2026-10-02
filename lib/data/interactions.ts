@@ -1,17 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
-
-import { mockCandles, mockComments } from '@/lib/mock-data/interactions'
-import { mockUsers } from '@/lib/mock-data/users'
 import type { Comment, User } from '@/lib/types'
 
-/** A comment joined with its author, since Comment only carries user_id. */
 export interface CommentWithAuthor extends Comment {
   author: Pick<User, 'id' | 'username'>
 }
 
-// NOTE: currently called for every post on a page, including posts whose
-// comment section is collapsed. Acceptable against fixtures; see DEFERRED.md
-// for the on-expand fetch this becomes in Phase 6.
 export async function getComments(postId: string): Promise<CommentWithAuthor[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
@@ -39,5 +32,17 @@ export async function hasLitCandle(
   postId: string,
   userId: string
 ): Promise<boolean> {
-  return mockCandles.some((c) => c.post_id === postId && c.user_id === userId)
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('candle_lights')
+    .select('id')
+    .eq('post_id', postId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (error) {
+    console.error('[hasLitCandle] query failed:', error.message)
+    return false
+  }
+  return data !== null
 }

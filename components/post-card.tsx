@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { usePathname } from "next/navigation";
 import { Avatar } from "@/components/avatar";
 import { CandleButton } from "@/components/candle-button";
 import { CommentButton } from "@/components/comment-button";
 import { VisibilityLabel } from "@/components/visibility-label";
+import { toggleCandle, postComment } from "@/app/actions/candle";
 import type { PostWithMeta } from "@/lib/data/posts";
 import type { User } from "@/lib/types";
 import type { CommentWithAuthor } from "@/lib/data/interactions";
@@ -28,15 +30,46 @@ export function PostCard({
   author?: Pick<User, "id" | "username">;
   isFollowing?: boolean;
 }) {
+  const pathname = usePathname();
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
+  const [commentError, setCommentError] = useState<string | null>(null);
+  // Seeded from the server-computed initial state, then updated optimistically
+  // by the actions below — not re-derived from `post` on every render, so a
+  // toggle isn't clobbered by a stale prop before the page next reloads.
+  const [localComments, setLocalComments] = useState(comments);
+  const [lit, setLit] = useState(post.viewer_has_lit);
+  const [, startCandleTransition] = useTransition();
+  const [isCommentPending, startCommentTransition] = useTransition();
 
-  // TEMP: local-only, resets on refresh. See DEFERRED.md.
-  const [lit, setLit] = useState(false);
+  const handleCandleClick = () => {
+    const next = !lit;
+    setLit(next); // optimistic
+    startCandleTransition(async () => {
+      const result = await toggleCandle(post.id, pathname);
+      if ("error" in result) {
+        setLit(!next); // revert
+        console.error("[CandleButton]", result.error);
+        return;
+      }
+      setLit(result.lit);
+    });
+  };
 
   const submitComment = () => {
-    // NOT IMPLEMENTED — write path lands in Phase 6, after RLS.
-    alert("Commenting isn't wired up yet.");
+    const trimmed = commentDraft.trim();
+    if (!trimmed) return;
+
+    setCommentError(null);
+    startCommentTransition(async () => {
+      const result = await postComment(post.id, trimmed, pathname);
+      if ("error" in result) {
+        setCommentError(result.error);
+        return;
+      }
+      setLocalComments((prev) => [...prev, result.comment]);
+      setCommentDraft("");
+    });
   };
 
   const visibleTags = post.tags.slice(0, 2);
@@ -82,9 +115,9 @@ export function PostCard({
         </p>
 
         <div className="flex items-center gap-2">
-          <CandleButton lit={lit} onClick={() => setLit((v) => !v)} />
+          <CandleButton lit={lit} onClick={handleCandleClick} />
           <CommentButton
-            count={post.comment_count}
+            count={localComments.length}
             open={commentsOpen}
             onClick={() => setCommentsOpen((v) => !v)}
           />
@@ -93,9 +126,9 @@ export function PostCard({
 
       {commentsOpen && (
         <div className="space-y-3 border-t border-border bg-muted/30 px-5 py-4">
-          {comments.length > 0 && (
+          {localComments.length > 0 && (
             <ul className="space-y-2.5">
-              {comments.map((comment) => (
+              {localComments.map((comment) => (
                 <li key={comment.id} className="flex items-start gap-2.5">
                   <Avatar name={comment.author.username} size={22} />
                   <div>
@@ -111,21 +144,31 @@ export function PostCard({
             </ul>
           )}
 
+          {commentError && (
+            <p role="alert" className="text-xs text-destructive">
+              {commentError}
+            </p>
+          )}
+
           <div className="flex gap-2 pt-1">
             <input
               value={commentDraft}
               onChange={(e) => setCommentDraft(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && submitComment()}
+              onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing) return;
+                if (e.key === "Enter") submitComment();
+              }}
               placeholder="Write a comment..."
               aria-label="Write a comment"
+              disabled={isCommentPending}
               className="flex-1 rounded-lg border border-border bg-card px-3 py-2 text-xs outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground/30"
             />
             <button
               onClick={submitComment}
-              disabled={!commentDraft.trim()}
+              disabled={!commentDraft.trim() || isCommentPending}
               className="whitespace-nowrap rounded-lg bg-foreground px-3 py-2 text-xs text-primary-foreground transition-colors hover:bg-foreground/85 disabled:opacity-40"
             >
-              Post
+              {isCommentPending ? "Posting..." : "Post"}
             </button>
           </div>
         </div>
