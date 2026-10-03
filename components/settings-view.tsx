@@ -5,7 +5,8 @@ import { ChevronRight } from "lucide-react";
 import { Toggle } from "@/components/toggle";
 import type { ProfileVisibility, User, UserSettings } from "@/lib/types";
 
-import { logout } from '@/app/auth/actions'
+import { logout } from "@/app/auth/actions";
+import { updateProfileVisibility, updateNotificationSetting } from "@/app/actions/settings";
 
 const VISIBILITY_OPTIONS: { value: ProfileVisibility; label: string }[] = [
   { value: "public", label: "Public" },
@@ -52,16 +53,51 @@ export function SettingsView({
 }) {
   const [passwordOpen, setPasswordOpen] = useState(false);
 
-  // Read-only for now: state is local so the controls respond, but nothing
-  // persists. See DEFERRED.md.
+  // Profile Visibility 낙관적 업데이트 상태 및 에러 핸들링
   const [visibility, setVisibility] = useState<ProfileVisibility>(
     user.profile_visibility
   );
+  const [visibilityError, setVisibilityError] = useState<string | null>(null);
+
+  const handleVisibilityChange = (next: ProfileVisibility) => {
+    const prev = visibility;
+    setVisibility(next); // optimistic
+    setVisibilityError(null);
+    updateProfileVisibility(next).then((result) => {
+      if ("error" in result) {
+        setVisibility(prev); // revert
+        setVisibilityError(result.error);
+      }
+    });
+  };
+
+  // 알림 설정 낙관적 업데이트 상태 및 핸들러
+  const [notifications, setNotifications] = useState<UserSettings>(
+    settings ?? {
+      user_id: user.id,
+      notify_candle: true,
+      notify_comment: true,
+      notify_follow_request: true,
+      notify_follow_accepted: true,
+      language: "en",
+    }
+  );
+
+  const handleNotificationToggle = (key: NotificationKey, next: boolean) => {
+    setNotifications((prev) => ({ ...prev, [key]: next })); // optimistic
+    updateNotificationSetting(key, next).then((result) => {
+      if ("error" in result) {
+        setNotifications((prev) => ({ ...prev, [key]: !next })); // revert
+        console.error("[SettingsView]", result.error);
+      }
+    });
+  };
 
   return (
     <div className="mx-auto max-w-[560px] space-y-8 px-8 py-10">
       <h1 className="text-lg font-semibold">Settings</h1>
 
+      {/* Account Section */}
       <section className="space-y-3">
         <h2 className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
           Account
@@ -74,7 +110,6 @@ export function SettingsView({
                 Name, bio, profile picture
               </p>
             </div>
-            {/* NOT IMPLEMENTED — profile editing is a write, lands in Phase 6. */}
             <button
               disabled
               className="flex items-center gap-1 text-xs text-muted-foreground disabled:opacity-40"
@@ -108,6 +143,7 @@ export function SettingsView({
         </div>
       </section>
 
+      {/* Security Section */}
       <section className="space-y-3">
         <h2 className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
           Security
@@ -146,9 +182,6 @@ export function SettingsView({
                   />
                 )
               )}
-              {/* NOT IMPLEMENTED — password changes go through Supabase Auth
-                  in Phase 6. Inputs are disabled so nothing is typed into a
-                  form that discards it. */}
               <button
                 disabled
                 className="mt-1 w-full rounded-lg bg-foreground py-2.5 text-sm text-primary-foreground disabled:opacity-40"
@@ -160,6 +193,7 @@ export function SettingsView({
         </div>
       </section>
 
+      {/* Privacy Section */}
       <section className="space-y-3">
         <h2 className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
           Privacy
@@ -177,7 +211,7 @@ export function SettingsView({
               {VISIBILITY_OPTIONS.map((option, i) => (
                 <button
                   key={option.value}
-                  onClick={() => setVisibility(option.value)}
+                  onClick={() => handleVisibilityChange(option.value)}
                   aria-pressed={visibility === option.value}
                   className={`flex-1 py-2 text-sm transition-colors ${
                     i > 0 ? "border-l border-border" : ""
@@ -204,10 +238,18 @@ export function SettingsView({
                 followers. You can still follow and read others.
               </p>
             )}
+
+            {/* Visibility Server Action 에러 표시 */}
+            {visibilityError && (
+              <p role="alert" className="text-xs text-destructive">
+                {visibilityError}
+              </p>
+            )}
           </div>
         </div>
       </section>
 
+      {/* Notifications Section */}
       <section className="space-y-3">
         <h2 className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
           Notifications
@@ -225,29 +267,28 @@ export function SettingsView({
                 </p>
               </div>
               <Toggle
-                checked={settings?.[key] ?? true}
+                checked={notifications[key]}
                 label={label}
-                disabled
+                onChange={(next) => handleNotificationToggle(key, next)}
               />
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── Logout ───────────────────────────────────────────────────── */}
+      {/* Logout Section */}
       <section className="space-y-3">
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
           <form action={logout}>
             <button
               type="submit"
-              className="flex items-center px-4 py-3.5 w-full text-sm font-medium text-destructive hover:bg-destructive/[0.06] transition-colors"
+              className="flex w-full items-center px-4 py-3.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/[0.06]"
             >
               Log out
             </button>
           </form>
         </div>
       </section>
-
     </div>
   );
 }
