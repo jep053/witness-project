@@ -7,6 +7,7 @@ import { GoalCard } from "@/components/goal-card";
 import { FollowButton } from "@/components/follow-button";
 import { FollowersModal } from "@/components/followers-modal";
 import { ProfileLocked } from "@/components/profile-locked";
+import { ProfileEditModal } from "@/components/profile-edit-modal";
 import type { BrightnessTier, FollowStatus, Goal, User } from "@/lib/types";
 
 export function ProfileView({
@@ -35,6 +36,7 @@ export function ProfileView({
 }) {
   const [tab, setTab] = useState<"active" | "planned">("active");
   const [openList, setOpenList] = useState<"followers" | "following" | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   return (
     <div className="px-8 py-10">
@@ -73,10 +75,9 @@ export function ProfileView({
         </div>
 
         {isSelf ? (
-          // NOT IMPLEMENTED — profile editing is a write, lands in Phase 6.
           <button
-            disabled
-            className="flex-shrink-0 whitespace-nowrap rounded-lg border border-border px-4 py-2 text-sm disabled:opacity-40"
+            onClick={() => setEditOpen(true)}
+            className="flex-shrink-0 whitespace-nowrap rounded-lg border border-border px-4 py-2 text-sm transition-colors hover:bg-muted/40"
           >
             Edit profile
           </button>
@@ -150,6 +151,15 @@ export function ProfileView({
           title={openList === "followers" ? "Followers" : "Following"}
           users={openList === "followers" ? followers : following}
           onClose={() => setOpenList(null)}
+        />
+      )}
+
+      {editOpen && (
+        <ProfileEditModal
+          username={profile.username}
+          initialName={profile.display_name ?? ""}
+          initialBio={profile.bio ?? ""}
+          onClose={() => setEditOpen(false)}
         />
       )}
     </div>

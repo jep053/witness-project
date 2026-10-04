@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { Toggle } from "@/components/toggle";
+import { ProfileEditModal } from "@/components/profile-edit-modal";
 import type { ProfileVisibility, User, UserSettings } from "@/lib/types";
 
 import { logout } from "@/app/auth/actions";
@@ -52,6 +53,7 @@ export function SettingsView({
   settings: UserSettings | null;
 }) {
   const [passwordOpen, setPasswordOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   // Profile Visibility 낙관적 업데이트 상태 및 에러 핸들링
   const [visibility, setVisibility] = useState<ProfileVisibility>(
@@ -111,8 +113,8 @@ export function SettingsView({
               </p>
             </div>
             <button
-              disabled
-              className="flex items-center gap-1 text-xs text-muted-foreground disabled:opacity-40"
+              onClick={() => setEditOpen(true)}
+              className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
             >
               Open
               <ChevronRight size={13} />
@@ -289,6 +291,15 @@ export function SettingsView({
           </form>
         </div>
       </section>
+
+      {editOpen && (
+        <ProfileEditModal
+          username={user.username}
+          initialName={user.display_name ?? ""}
+          initialBio={user.bio ?? ""}
+          onClose={() => setEditOpen(false)}
+        />
+      )}
     </div>
   );
 }
